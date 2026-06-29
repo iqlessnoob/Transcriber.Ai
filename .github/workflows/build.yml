@@ -30,10 +30,14 @@ jobs:
       run: flutter pub get
 
     - name: Build APK
-      run: flutter build apk --release
+      run: |
+        # Force the Android SDK version to 36 to satisfy the file_picker requirement
+        sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' android/app/build.gradle
+        flutter build apk --release
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
+
