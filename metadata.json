@@ -1,0 +1,6 @@
+{
+  "name": "Offline Transcriber",
+  "description": "An offline Speech-to-Text app optimized for mobile that transcribes videos to SRT subtitle files offline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
