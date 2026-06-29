@@ -29,12 +29,13 @@ jobs:
     - name: Install dependencies
       run: flutter pub get
 
-    - name: Build APK
+    - name: Force Android SDK 36
       run: |
-        # Force the compileSdkVersion to 36 by creating a new gradle configuration file
-        echo "android { compileSdkVersion 36 }" > android/app/build.gradle.append
-        # Build the APK
-        flutter build apk --release
+        # This replaces the default flutter SDK variable with a hardcoded 36
+        sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' android/app/build.gradle
+
+    - name: Build APK
+      run: flutter build apk --release
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
