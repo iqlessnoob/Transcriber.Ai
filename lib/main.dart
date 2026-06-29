@@ -6,8 +6,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter/return_code.dart';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
 void main() async {
@@ -200,7 +200,6 @@ class _ChatScreenState extends State<ChatScreen> {
       final stream = recognizer.createStream();
       stream.acceptWaveform(sampleRate: wave.sampleRate, samples: wave.samples);
       
-      // Fix: Used the correct getter for the stream result
       recognizer.decode(stream);
       final streamResult = recognizer.getResult(stream);
       
