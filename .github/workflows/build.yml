@@ -31,9 +31,8 @@ jobs:
 
     - name: Force Android SDK 36
       run: |
-        # Use find to locate the build.gradle file and replace the compileSdk line
-        find . -name "build.gradle" -exec sed -i 's/compileSdk = .*/compileSdk = 36/g' {} +
-        find . -name "build.gradle" -exec sed -i 's/compileSdkVersion = .*/compileSdkVersion = 36/g' {} +
+        # Create or overwrite local.properties to force the compile SDK version
+        echo "flutter.compileSdkVersion=36" > android/local.properties
 
     - name: Build APK
       run: flutter build apk --release
@@ -43,4 +42,5 @@ jobs:
       with:
         name: release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
+
 
