@@ -9,7 +9,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # Increase memory limit for Gradle to fix Java heap space errors
       GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=512m"
 
     steps:
@@ -32,12 +31,12 @@ jobs:
     - name: Install dependencies
       run: flutter pub get
 
-    - name: Configure AndroidX and SDK
+    - name: Force Android SDK 36 Everywhere
       run: |
-        echo "android.useAndroidX=true" >> android/gradle.properties
-        echo "android.enableJetifier=true" >> android/gradle.properties
-        sed -i 's/compileSdk = .*/compileSdk = 36/g' android/app/build.gradle || true
-        sed -i 's/compileSdkVersion .*/compileSdkVersion 36/g' android/app/build.gradle || true
+        # Recursively find all build.gradle files and force compileSdk to 36
+        find android -type f -name "build.gradle*" -exec sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 36/g' {} +
+        find android -type f -name "build.gradle*" -exec sed -i 's/compileSdk = [0-9]*/compileSdk = 36/g' {} +
+        find android -type f -name "build.gradle*" -exec sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 36/g' {} +
 
     - name: Build APK
       run: flutter build apk --release
@@ -47,4 +46,3 @@ jobs:
       with:
         name: release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
-
