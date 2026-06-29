@@ -29,12 +29,18 @@ jobs:
     - name: Install dependencies
       run: flutter pub get
 
+    - name: Force Compile SDK 36
+      run: |
+        # This script locates the build.gradle file and forces compileSdk to 36
+        find android -name "build.gradle" -exec sed -i 's/compileSdk = .*/compileSdk = 36/g' {} +
+        find android -name "build.gradle" -exec sed -i 's/compileSdkVersion .*/compileSdkVersion 36/g' {} +
+
     - name: Build APK
-      # We pass the compileSdkVersion directly as a Gradle property
-      run: flutter build apk --release --build-name=1.0.0 --build-number=1 --no-tree-shake-icons -PcompileSdkVersion=36
+      run: flutter build apk --release
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
+
