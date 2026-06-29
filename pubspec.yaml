@@ -15,7 +15,8 @@ dependencies:
   sherpa_onnx: ^1.13.2
 
   # Audio extraction and chunking
-  ffmpeg_kit_flutter: ^6.0.3
+  ffmpeg_kit_flutter_new: ^4.2.2
+
 
   # Network & Files for downloading the AI Engine
   dio: ^5.4.3
