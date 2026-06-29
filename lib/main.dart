@@ -64,10 +64,10 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _initApp() async {
     _prefs = await SharedPreferences.getInstance();
     final docDir = await getApplicationDocumentsDirectory();
-    _modelDir = '${docDir.path}/moonshine_model';
+    _modelDir = '${docDir.path}/whisper_model';
     _loadChatHistory();
 
-    bool hasDownloaded = _prefs.getBool('engine_downloaded') ?? false;
+    bool hasDownloaded = _prefs.getBool('engine_downloaded_whisper') ?? false;
     if (!hasDownloaded) {
       await _downloadOfflineEngine();
     }
@@ -98,15 +98,14 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _downloadOfflineEngine() async {
     setState(() {
       _isDownloadingEngine = true;
-      _statusText = "Downloading Offline AI Engine (approx 50MB)...";
+      _statusText = "Downloading AI Engine (approx 40MB)...";
     });
 
     final dio = Dio();
     final urls = {
-      'uncached_decode.int8.onnx': 'https://huggingface.co/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/main/uncached_decode.int8.onnx',
-      'encode.int8.onnx': 'https://huggingface.co/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/main/encode.int8.onnx',
-      'preprocess.onnx': 'https://huggingface.co/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/main/preprocess.onnx',
-      'tokens.txt': 'https://huggingface.co/csukuangfj/sherpa-onnx-moonshine-tiny-en-int8/resolve/main/tokens.txt',
+      'encoder.int8.onnx': 'https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny.en/resolve/main/tiny.en-encoder.int8.onnx',
+      'decoder.int8.onnx': 'https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny.en/resolve/main/tiny.en-decoder.int8.onnx',
+      'tokens.txt': 'https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny.en/resolve/main/tiny.en-tokens.txt',
     };
 
     Directory dir = Directory(_modelDir);
@@ -125,7 +124,7 @@ class _ChatScreenState extends State<ChatScreen> {
       completed++;
     }
 
-    await _prefs.setBool('engine_downloaded', true);
+    await _prefs.setBool('engine_downloaded_whisper', true);
     setState(() {
       _isDownloadingEngine = false;
       _statusText = "Engine Ready.";
@@ -148,7 +147,7 @@ class _ChatScreenState extends State<ChatScreen> {
     
     setState(() {
       _isProcessing = true;
-      _statusText = "Extracting and Segmenting Audio...";
+      _statusText = "Extracting Audio (This may take a minute)...";
       _currentChatId = DateTime.now().millisecondsSinceEpoch.toString();
       _currentSrtText = "";
     });
@@ -170,16 +169,15 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    // 2. Initialize Sherpa-ONNX Engine
+    // 2. Initialize Sherpa-ONNX Engine with Whisper Tiny
     final config = sherpa.OfflineRecognizerConfig(
       model: sherpa.OfflineModelConfig(
-        moonshine: sherpa.OfflineMoonshineModelConfig(
-          encode: '$_modelDir/encode.int8.onnx',
-          uncachedDecode: '$_modelDir/uncached_decode.int8.onnx',
-          preprocess: '$_modelDir/preprocess.onnx',
+        whisper: sherpa.OfflineWhisperModelConfig(
+          encoder: '$_modelDir/encoder.int8.onnx',
+          decoder: '$_modelDir/decoder.int8.onnx',
         ),
         tokens: '$_modelDir/tokens.txt',
-        modelType: 'moonshine',
+        modelType: 'whisper',
       ),
     );
     final recognizer = sherpa.OfflineRecognizer(config);
@@ -201,18 +199,18 @@ class _ChatScreenState extends State<ChatScreen> {
       final wave = sherpa.readWave(chunkFiles[i].path);
       final stream = recognizer.createStream();
       stream.acceptWaveform(sampleRate: wave.sampleRate, samples: wave.samples);
+      
+      // Fix: Used the correct getter for the stream result
       recognizer.decode(stream);
+      final streamResult = recognizer.getResult(stream);
       
-      final result = stream.result;
-      
-      // Simulate chunk-level SRT block (since pure offline tokens vary by engine)
-      if (result.text.isNotEmpty) {
+      if (streamResult.text.isNotEmpty) {
         String startTime = _formatTime(timeOffset);
         String endTime = _formatTime(timeOffset + (wave.samples.length / wave.sampleRate));
         
         finalSrt.writeln((srtIndex).toString());
         finalSrt.writeln("$startTime --> $endTime");
-        finalSrt.writeln(result.text);
+        finalSrt.writeln(streamResult.text);
         finalSrt.writeln();
         srtIndex++;
       }
@@ -374,4 +372,3 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
-
