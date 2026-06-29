@@ -31,7 +31,9 @@ jobs:
 
     - name: Build APK
       run: |
-        sed -i 's/flutter.compileSdkVersion/36/g' android/app/build.gradle*
+        # Force the compileSdkVersion to 36 by creating a new gradle configuration file
+        echo "android { compileSdkVersion 36 }" > android/app/build.gradle.append
+        # Build the APK
         flutter build apk --release
 
     - name: Upload APK
