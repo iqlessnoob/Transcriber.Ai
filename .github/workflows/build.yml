@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # This forces the build to use SDK 36 without needing to edit any files
+      COMPILE_SDK_VERSION: 36
 
     steps:
     - uses: actions/checkout@v4
@@ -28,11 +31,6 @@ jobs:
 
     - name: Install dependencies
       run: flutter pub get
-
-    - name: Force Android SDK 36
-      run: |
-        # This replaces the default flutter SDK variable with a hardcoded 36
-        sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' android/app/build.gradle
 
     - name: Build APK
       run: flutter build apk --release
