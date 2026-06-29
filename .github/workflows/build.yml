@@ -31,8 +31,7 @@ jobs:
 
     - name: Build APK
       run: |
-        # Force the Android SDK version to 36 to satisfy the file_picker requirement
-        sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 36/g' android/app/build.gradle
+        sed -i 's/flutter.compileSdkVersion/36/g' android/app/build.gradle*
         flutter build apk --release
 
     - name: Upload APK
@@ -40,4 +39,3 @@ jobs:
       with:
         name: release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
-
