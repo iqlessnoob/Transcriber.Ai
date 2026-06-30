@@ -32,8 +32,11 @@ jobs:
     - name: Install dependencies
       run: flutter pub get
 
-    - name: Fix App and Plugin SDK Versions
+    - name: Inject Internet Permission & Fix SDKs
       run: |
+        # 0. INJECT INTERNET PERMISSION FOR RELEASE BUILD
+        sed -i 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.INTERNET"/>|g' android/app/src/main/AndroidManifest.xml
+
         echo "android.useAndroidX=true" >> android/gradle.properties
         echo "android.enableJetifier=true" >> android/gradle.properties
         
@@ -42,7 +45,6 @@ jobs:
         find android -type f -name "build.gradle*" -exec sed -i 's/flutter.targetSdkVersion/36/g' {} +
         
         # 2. OVERRIDE THE EXTERNAL PLUGINS
-        # This targets the hidden pub-cache folder and upgrades all hardcoded plugin SDKs to 36
         find ~/.pub-cache/hosted/ -type f -name "build.gradle*" -exec sed -i 's/compileSdk 33/compileSdk 36/g' {} +
         find ~/.pub-cache/hosted/ -type f -name "build.gradle*" -exec sed -i 's/compileSdk 34/compileSdk 36/g' {} +
         find ~/.pub-cache/hosted/ -type f -name "build.gradle*" -exec sed -i 's/compileSdk 35/compileSdk 36/g' {} +
