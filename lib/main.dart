@@ -139,7 +139,7 @@ class _ChatScreenState extends State<ChatScreen> {
     int ms = ((totalSeconds - totalSeconds.truncate()) * 1000).toInt();
     return "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')},${ms.toString().padLeft(3, '0')}";
   }
-  Future<void> _processVideo() async {
+    Future<void> _processVideo() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.video);
     if (result == null || result.files.single.path == null) return;
 
@@ -156,9 +156,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final outputDir = '${docDir.path}/audio_chunks_$_currentChatId';
     await Directory(outputDir).create();
 
-    // 1. FFmpeg 7-Second Chunking Logic
-    // We changed segment_time to 7 seconds so subtitles appear line-by-line!
-    String ffmpegCmd = "-y -i '$videoPath' -vn -acodec pcm_s16le -ar 16000 -ac 1 -f segment -segment_time 7 '$outputDir/chunk_%04d.wav'";
+    // 1. FFmpeg 2-Second Chunking (CapCut Style)
+    // Slices audio every 2 seconds for fast, punchy captions
+    String ffmpegCmd = "-y -i '$videoPath' -vn -acodec pcm_s16le -ar 16000 -ac 1 -f segment -segment_time 2 '$outputDir/chunk_%04d.wav'";
     final session = await FFmpegKit.execute(ffmpegCmd);
     final returnCode = await session.getReturnCode();
 
@@ -170,7 +170,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    // 2. Initialize Sherpa-ONNX Engine with Whisper Tiny
+    // 2. Initialize Sherpa-ONNX Engine
     final config = sherpa.OfflineRecognizerConfig(
       model: sherpa.OfflineModelConfig(
         whisper: sherpa.OfflineWhisperModelConfig(
@@ -183,7 +183,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     final recognizer = sherpa.OfflineRecognizer(config);
 
-    // 3. Sequential Processing & Time Offset
+    // 3. Sequential Processing
     List<FileSystemEntity> chunkFiles = Directory(outputDir).listSync().whereType<File>().toList();
     chunkFiles.sort((a, b) => a.path.compareTo(b.path));
 
@@ -195,7 +195,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _statusText = "Transcribing Part ${i + 1} of ${chunkFiles.length}...";
       });
 
-      double timeOffset = i * 7.0; // 7 seconds offset per chunk
+      double timeOffset = i * 2.0; // 2 seconds offset per chunk
       
       final wave = sherpa.readWave(chunkFiles[i].path);
       final stream = recognizer.createStream();
@@ -204,14 +204,15 @@ class _ChatScreenState extends State<ChatScreen> {
       recognizer.decode(stream);
       final streamResult = recognizer.getResult(stream);
       
-      // .trim() cleans up any random spaces the AI spits out
-      if (streamResult.text.trim().isNotEmpty) {
+      String text = streamResult.text.trim();
+      // Only add text if it actually found words
+      if (text.isNotEmpty) {
         String startTime = _formatTime(timeOffset);
         String endTime = _formatTime(timeOffset + (wave.samples.length / wave.sampleRate));
         
         finalSrt.writeln((srtIndex).toString());
         finalSrt.writeln("$startTime --> $endTime");
-        finalSrt.writeln(streamResult.text.trim());
+        finalSrt.writeln(text);
         finalSrt.writeln();
         srtIndex++;
       }
@@ -239,19 +240,39 @@ class _ChatScreenState extends State<ChatScreen> {
     Directory(outputDir).deleteSync(recursive: true); // Cleanup
   }
 
-
-  void _exportSubtitles() {
+  Future<void> _exportSubtitles() async {
     if (_currentSrtText.isEmpty) return;
-    Share.shareXFiles(
-      [
-        XFile.fromData(
-          utf8.encode(_currentSrtText), 
-          name: 'subtitles_$_currentChatId.srt', 
-          mimeType: 'application/x-subrip'
-        )
-      ],
-      text: 'Here are the generated subtitles!',
-    );
+    
+    try {
+      // Force Android to save directly to the public Downloads folder
+      final String downloadPath = '/storage/emulated/0/Download/subtitles_$_currentChatId.srt';
+      final File file = File(downloadPath);
+      
+      await file.writeAsString(_currentSrtText);
+      
+      // Show a green success popup at the bottom of the screen
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Success! Saved directly to your Downloads folder."),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      // If Android blocks the direct download due to strict security permissions, fallback to the share menu
+      Share.shareXFiles(
+        [
+          XFile.fromData(
+            utf8.encode(_currentSrtText), 
+            name: 'subtitles_$_currentChatId.srt', 
+            mimeType: 'application/x-subrip'
+          )
+        ],
+        text: 'Save this file to your phone',
+      );
+    }
   }
 
   @override
