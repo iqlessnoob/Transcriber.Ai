@@ -139,7 +139,6 @@ class _ChatScreenState extends State<ChatScreen> {
     int ms = ((totalSeconds - totalSeconds.truncate()) * 1000).toInt();
     return "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')},${ms.toString().padLeft(3, '0')}";
   }
-
   Future<void> _processVideo() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.video);
     if (result == null || result.files.single.path == null) return;
@@ -157,8 +156,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final outputDir = '${docDir.path}/audio_chunks_$_currentChatId';
     await Directory(outputDir).create();
 
-    // 1. FFmpeg 10-Min Chunking Logic
-    String ffmpegCmd = "-y -i '$videoPath' -vn -acodec pcm_s16le -ar 16000 -ac 1 -f segment -segment_time 600 '$outputDir/chunk_%03d.wav'";
+    // 1. FFmpeg 7-Second Chunking Logic
+    // We changed segment_time to 7 seconds so subtitles appear line-by-line!
+    String ffmpegCmd = "-y -i '$videoPath' -vn -acodec pcm_s16le -ar 16000 -ac 1 -f segment -segment_time 7 '$outputDir/chunk_%04d.wav'";
     final session = await FFmpegKit.execute(ffmpegCmd);
     final returnCode = await session.getReturnCode();
 
@@ -195,7 +195,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _statusText = "Transcribing Part ${i + 1} of ${chunkFiles.length}...";
       });
 
-      double timeOffset = i * 600.0; // 10 minutes offset per chunk
+      double timeOffset = i * 7.0; // 7 seconds offset per chunk
       
       final wave = sherpa.readWave(chunkFiles[i].path);
       final stream = recognizer.createStream();
@@ -204,13 +204,14 @@ class _ChatScreenState extends State<ChatScreen> {
       recognizer.decode(stream);
       final streamResult = recognizer.getResult(stream);
       
-      if (streamResult.text.isNotEmpty) {
+      // .trim() cleans up any random spaces the AI spits out
+      if (streamResult.text.trim().isNotEmpty) {
         String startTime = _formatTime(timeOffset);
         String endTime = _formatTime(timeOffset + (wave.samples.length / wave.sampleRate));
         
         finalSrt.writeln((srtIndex).toString());
         finalSrt.writeln("$startTime --> $endTime");
-        finalSrt.writeln(streamResult.text);
+        finalSrt.writeln(streamResult.text.trim());
         finalSrt.writeln();
         srtIndex++;
       }
@@ -237,6 +238,7 @@ class _ChatScreenState extends State<ChatScreen> {
     await _saveChatHistory();
     Directory(outputDir).deleteSync(recursive: true); // Cleanup
   }
+
 
   void _exportSubtitles() {
     if (_currentSrtText.isEmpty) return;
